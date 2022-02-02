@@ -1,0 +1,417 @@
+---
+title: "Cox Porportional Hazard Model"
+author: "Rajeev A., Sha L., Erik M."
+institute: "STAT-615"
+date: "08/05/2021"
+output:
+  xaringan::moon_reader:
+    css: [default, metropolis, metropolis-fonts]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+---
+
+<style type="text/css">
+.remark-slide-content {
+    font-size: 30px;
+    padding: 1em 1em 1em 1em;
+}
+
+.my-one-page-font {
+  font-size: 20px;
+}
+</style>
+
+```{r setup, include=FALSE, message = FALSE, warning=FALSE}
+options(htmltools.dir.version = FALSE)
+```
+
+# What is Survival Analysis? 
+
+```{r pressure, echo=FALSE, out.width = '50%', fig.align='center'}
+knitr::include_graphics("./images/outcome.png")
+```
+
+
+- Survival analysis examines and models the **time** it takes for events to occur. 
+  - **survival time:** time that an individual has “survived” over some follow-up period 
+  - **event**
+
+
+---
+
+# Survival Analysis vs. Linear Regression
+
+```{r echo=FALSE, out.width = '75%', fig.align='center'}
+knitr::include_graphics("./images/modeling_methods.png")
+```
+---
+
+# Censored Data
+
+- **Censoring** occurs when we don’t know the survival time exactly.
+- Why censor? 
+  - study ends – no event 
+  - lost to follow-up 
+  - withdraws
+
+---
+
+# Censored Data Example
+
+.pull-left[
+```{r echo=FALSE, out.width = '100%'}
+knitr::include_graphics("./images/censored_data.png")
+```
+]
+
+.pull-right[
+- Event: A, F
+- Censored B, C, D, E
+]
+
+---
+
+# Right-Censored Data
+
+.pull-left[
+```{r echo=FALSE, out.width = '100%'}
+knitr::include_graphics("./images/lr_censored.png")
+```
+]
+
+.pull-right[
+- True survival time >= observed survival time.
+
+- Most survival data is right-censored.
+
+]
+
+---
+
+# Survival Function
+
+- S(t) gives the probability that a person survives longer than some specified time t, that is, S(t) = P(T>t).
+
+```{r echo=FALSE, out.width = '100%', fig.align='center'}
+knitr::include_graphics("./images/survival_function2.png")
+```
+
+---
+
+# Example
+
+- Which group has a better survival likelihood before time t*? 
+
+- ...after time t*?
+
+
+```{r echo=FALSE, out.width = '75%', fig.align='center'}
+knitr::include_graphics("./images/groups.png")
+```
+
+---
+class: my-one-page-font
+
+# Hazard Function
+
+.pull-left[
+```{r echo=FALSE, out.width = '60%'}
+knitr::include_graphics("./images/st_ht.png")
+```
+]
+
+.pull-right[
+The hazard function h(t) gives the instantaneous potential per unit time for the event to occur, given that the individual has survived up to time t.
+
+$$h(t) = \lim\limits_{\triangle t \to 0} \frac{P(t \leq T < t + \triangle t | T \geq t)}{\triangle t}$$
+Hazard is a measure of the rate of decrease of survival probability. General formula:
+
+$$h(t) = - \left[ \frac{dS(t)/dt}{S(t)} \right]$$
+]
+
+---
+
+# Hazard Function
+
+.pull-left[
+```{r echo=FALSE, out.width = '100%'}
+knitr::include_graphics("./images/hazard_function.png")
+```
+]
+
+.pull-right[
+- In contrast to S(t), h(t) does not have to start at 1 and go down to 0. 
+
+- It can go up and down in any direction over time. 
+
+- h(t) ≥ 0 
+
+]
+---
+
+# Hazard Function Example
+
+- A healthy person’s risk for becoming ill at any time can remain constant throughout the follow-up period. 
+
+- If S(t) is **exponential,** the hazard function is constant wrt time, given a set of predictors.
+
+$$S(t)=e^{- \lambda t}$$
+
+$$h(t) = - \left[ \frac{dS(t)/dt}{S(t)} \right] = \lambda$$
+
+---
+
+# Hazard Ratio
+
+.pull-left[
+```{r echo=FALSE, out.width = '100%'}
+knitr::include_graphics("./images/hazard_ratio.png")
+```
+]
+
+.pull-right[
+- **HR** is defined as the hazard for one group divided by the hazard for a different group. 
+]
+---
+
+# Parametric vs Non-Parametric vs Semi
+
+.pull-left[
+```{r echo=FALSE, out.width = '100%'}
+knitr::include_graphics("./images/kp_model.png")
+```
+]
+
+.pull-right[
+**Kaplan-Meier Estimator (non-parametric):**
+- **Pros:**
+  - simple to interpret
+  - can estimate s(t) 
+- **Cons:** 
+  - no functional form 
+  - can NOT estimate Hazard Ratio
+  - only can handle a few categorical x variables
+]
+---
+# Parametric vs Non-Parametric vs Semi
+
+.pull-left[
+```{r echo=FALSE, out.width = '100%'}
+knitr::include_graphics("./images/exponential.png")
+```
+]
+
+.pull-right[
+
+**Exponential (parametric):**
+- **Pros:**
+  - can estimate s(t) and HR
+- **Cons:**
+  - not always realistic (assume a constant hazard i.e. the dying hazard increases when aging, not constant)
+]
+---
+
+# Parametric vs Non-Parametric vs Semi
+
+**Cox proportional hazards model (semi- parametric)**
+- **Pros:**
+  - Hazard can fluctuate with time
+  - can estimate HR
+- **Cons:**
+  - can not est. s(t)
+  
+---
+
+# Cox Proportional Hazard Function
+
+Allows hazard to change over time, but assume the hazard is proportional (H.R is constant):
+
+$$log[h(t)]=log[h_o(t)]+b_1x_1+...+b_kx_k$$
+<center><b>OR</b></center> 
+
+$$h(t)=h_o(t)+ e^{b_1x_1+...+b_kx_k}$$
+- We can estimate the coefficients(bk) without specify how the time fluctuate (ho(t) base intercept)
+
+---
+
+# Slope of Cox PH and Exponential
+Exponential: 
+
+- $b_0$ is a constant number, doesn’t change $\longrightarrow$ constant hazard
+
+Cox PH:
+
+- $b_0$ (intercept) is a function of time $\longrightarrow$ increase/decrease with time
+
+- $log(h_o(t))$ can estimate b1, b2,...,bk without having to specify the function. In other words, we don’t have to specify how the time fluctuates but still able to estimate the coefficients from the model
+
+---
+# When to use Cox PH model?
+
+**Use to find:**
+
+- Hazard ratio (effect size)
+  - I.e.  How does the survival affected by treatment A vs. treatment B?
+  - What effect does variable x1 have on survival?
+
+**Don’t use to find:**
+
+- Predictive goal
+  - I.e. What’s the probability of surviving at a certain time?
+
+
+---
+
+# Cox Hazard Model Assumptions
+
+1. Non informative censoring
+2. Survival times (t) are independent
+3. Hazards are proportional (HR is constant over time)    
+  a. (check C Log Log plot)   
+  b. Schoelfelds test   
+4. ln(hazard) is a linear function of the X variables (numerical)   
+  a. Can check using residual plots 
+5. Values of X don’t change over time   
+  a. Ex: doses are contents, participants don’t switch treatment groups, etc.
+6. Baseline hazard $h_o(t)$ is unspecified
+
+---
+
+# Cox Hazard Model Example: Data
+
+**Dataset: NCCTG Lung Cancer Data**
+
+**Description:** Survival in patients with advanced lung cancer from the North Central Cancer Treatment Group.
+Performance scores rate how well the patient can perform usual daily activities.<sup>1</sup>
+
+**Variables:**
+- time: Survival time in days
+- status: censoring status 1=censored, 2=dead
+- sex: Male=1 Female=2
+- ...plus other variables we will not model
+
+---
+
+# Kaplan Meier Model:
+**Kaplan-Meier plots help to visualize the survival curve**
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+library(survival)
+library(tidyverse)
+library(survminer)
+library(gtsummary)
+
+lung <- as_tibble(lung)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, fig.align='center',fig.width=5, fig.height=5}
+
+km_model <- survfit(Surv(time, status) ~ sex,
+                    data = lung, 
+                    type = "kaplan-meier")
+
+km_plot <- ggsurvplot(
+    fit = km_model,
+    xlab = "Days", 
+    ylab = "Overall survival probability")
+
+km_plot
+```
+
+---
+class: my-one-page-font
+
+# Kaplan Meier Model: Median S(t)
+```{r}
+summary(km_model)$table
+```
+
+**Interpretation:**    
+- Kaplan Meier allows for the calculation of median survival time at S(t) = 0.50. For Males median survival = 270 days and for Females 426 days. 
+- In order to asses whether the difference in groups is statistically significant we can perform a log-rank test.
+---
+class: my-one-page-font 
+
+# Log-Rank Test:
+
+**Log-Rank Tests helps to compare the survival curve of two or more groups**
+
+```{r}
+survdiff(Surv(time, status) ~ sex, 
+         data = lung)
+```
+
+$H_0:$ no difference in survival between sexes
+
+$H_A:$ difference in survival between sexes  
+
+**p-value** = 0.001 < $\alpha=0.05$ 
+
+**Conclusion:** Reject null hypothesis there is sufficient evidence that suggests the lung cancer survival rate is different between males and females. 
+
+---
+class: my-one-page-font
+
+# Cox Proportional Hazard Model
+
+**Cox proportional hazards regression allows you to measure the effect of each variables on survival holding other variables in the model constant.** 
+
+```{r}
+cox_model <- coxph(Surv(time, status) ~ sex, 
+                   data = lung)
+cox_model 
+```
+
+$$h(t) = h_0(t) * e ^{-0.531(Sex)}$$
+---
+# Cox PH Model
+```{r, fig.width = 8, fig.height=8, echo=FALSE, fig.align='center'}
+fit <- survfit(Surv(time, status) ~ sex, data = lung)
+
+ggsurvplot(data = lung, 
+           fit = fit,
+           xlab = "Days",
+           fun = "cumhaz",
+           legend.title = "",
+           legend.labs = c("Male", "Female"),
+           legend = "bottom", 
+           risk.table = TRUE,
+           risk.table.y.text = FALSE)
+
+```
+
+
+---
+# Cox PH Model Interpretation
+
+**Interpretations:**
+
+- With a p-value of .0015 we can conclude that the variable sex is statistically significant in the model.
+
+- Hazard Ratio $=e^{-0.531(sex)}= 0.59$. Being Females (sex=2) reduces the hazard of lung cancer death by 0.59.
+
+---
+# Checking Cox PH Model Assumptions
+
+- Schoenfeld's test 
+ - $H_0$: PH assumption met (hazards are proportional)
+ - $H_A$: PH assumption not met (hazards not proportional)
+ 
+```{r, echo=FALSE}
+cox_test <- cox.zph(cox_model)
+cox_test
+
+```
+
+
+---
+
+# Checking Cox PH Model Assumptions
+
+- Conclusion: With a p-value o 0.091 > $\alpha = 0.05$ we fail to reject the null hypothesis and conclude that there is not enough evidence to conclude the assumptions are not met. The plot also shows a flat line which back up this test. 
+
+```{r, fig.width = 5, fig.height=5, fig.align='center', echo=FALSE}
+ggcoxzph(cox_test)
+```
